@@ -10,12 +10,12 @@ import google.generativeai as genai
 # --- CONFIGURATION ---
 app = FastAPI()
 
-# Setup templates directory
-templates = Jinja2Templates(directory="templates")
+# Setup templates directory (Cloud-Safe Version)
+current_dir = os.path.dirname(os.path.realpath(__file__))
+templates = Jinja2Templates(directory=os.path.join(current_dir, "templates"))
 
 # Configure Google Gemini
-# We will set the API key in the environment variables later during deployment
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
@@ -65,23 +65,16 @@ async def explain_topic(request: TopicRequest):
     try:
         model = genai.GenerativeModel('gemini-pro')
         
-        # Combine system prompt and user input
         full_prompt = f"{SYSTEM_PROMPT}\n\nUSER TOPIC: {request.topic}\n\nRespond in JSON."
         
         response = model.generate_content(full_prompt)
-        
-        # Simple cleanup to ensure we get pure text/json
         text_response = response.text.replace('```json', '').replace('```', '').strip()
         
-        # In a production app, we would parse JSON strictly here.
-        # For this MVP, we will return the text and let the frontend handle display,
-        # or we can parse it if Gemini follows instructions well.
         import json
         try:
             data = json.loads(text_response)
             return data
         except json.JSONDecodeError:
-            # Fallback if AI doesn't return perfect JSON
             return {
                 "what_it_is": "Error parsing AI response.",
                 "human_connection": text_response,
@@ -93,7 +86,3 @@ async def explain_topic(request: TopicRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
