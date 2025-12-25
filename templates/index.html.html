@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Relevance Engine</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; display: flex; justify-content: center; padding-top: 50px; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
+        h1 { text-align: center; color: #2c3e50; font-size: 24px; }
+        .input-group { margin-top: 20px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        button { padding: 12px 24px; background-color: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; transition: background 0.3s; }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        
+        /* Result Sections */
+        .result-box { margin-top: 30px; display: none; }
+        .section { margin-bottom: 20px; }
+        .section-title { font-weight: bold; color: #7f8c8d; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .section-content { font-size: 16px; line-height: 1.5; margin-top: 5px; }
+        
+        /* Confidence Bar */
+        .confidence-wrapper { margin-top: 10px; background: #eee; border-radius: 10px; height: 10px; overflow: hidden; width: 100%; }
+        .confidence-bar { height: 100%; width: 0%; transition: width 0.5s ease; }
+        .conf-high { background-color: #2ecc71; } /* Green */
+        .conf-mod { background-color: #f1c40f; } /* Yellow */
+        .conf-pre { background-color: #e67e22; } /* Orange */
+
+        .disclaimer { margin-top: 30px; font-size: 12px; color: #95a5a6; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
+        .loader { display: none; text-align: center; margin-top: 20px; color: #3498db; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Human Relevance Engine</h1>
+    <p style="text-align:center; color:#666;">Enter a topic to understand its human impact.</p>
+    
+    <div class="input-group">
+        <input type="text" id="topicInput" placeholder="e.g., Sleep deprivation, Jazz music...">
+        <button onclick="getExplanation()" id="submitBtn">Explain</button>
+    </div>
+
+    <div class="loader" id="loader">Analyzing human relevance...</div>
+
+    <div class="result-box" id="resultBox">
+        <div class="section">
+            <div class="section-title">What is it?</div>
+            <div class="section-content" id="res-what"></div>
+        </div>
+        <div class="section">
+            <div class="section-title">Human Connection</div>
+            <div class="section-content" id="res-human"></div>
+        </div>
+        <div class="section">
+            <div class="section-title">Social Influence</div>
+            <div class="section-content" id="res-social"></div>
+        </div>
+        <div class="section">
+            <div class="section-title">Scientific Consensus / Studies</div>
+            <div class="section-content" id="res-studies"></div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Scientific Confidence: <span id="res-conf-text"></span></div>
+            <div class="section-content" style="font-size: 13px; color: #666;" id="res-conf-reason"></div>
+            <div class="confidence-wrapper">
+                <div class="confidence-bar" id="confBar"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="disclaimer">
+        Disclaimer: Educational purpose only. Not medical advice. AI responses may vary.
+    </div>
+</div>
+
+<script>
+    async function getExplanation() {
+        const input = document.getElementById('topicInput').value;
+        if(!input) return;
+
+        // UI Updates
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('resultBox').style.display = 'none';
+
+        try {
+            const response = await fetch('/explain', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic: input })
+            });
+
+            const data = await response.json();
+
+            // Populate Text
+            document.getElementById('res-what').innerText = data.what_it_is || "N/A";
+            document.getElementById('res-human').innerText = data.human_connection || "N/A";
+            document.getElementById('res-social').innerText = data.social_influence || "N/A";
+            document.getElementById('res-studies').innerText = data.relevant_studies || "N/A";
+            document.getElementById('res-conf-text').innerText = data.confidence_level || "Unknown";
+            document.getElementById('res-conf-reason').innerText = data.confidence_reason || "";
+
+            // Handle Progress Bar
+            const bar = document.getElementById('confBar');
+            const level = (data.confidence_level || "").toLowerCase();
+            
+            bar.className = 'confidence-bar'; // Reset
+            if (level.includes('high')) {
+                bar.classList.add('conf-high');
+                bar.style.width = '100%';
+            } else if (level.includes('moderate')) {
+                bar.classList.add('conf-mod');
+                bar.style.width = '60%';
+            } else {
+                bar.classList.add('conf-pre');
+                bar.style.width = '30%';
+            }
+
+            document.getElementById('resultBox').style.display = 'block';
+        } catch (error) {
+            alert("Error fetching explanation. Please try again.");
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('submitBtn').disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
